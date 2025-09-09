@@ -2,17 +2,6 @@ import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
 
-// 完全避開 Buffer 類型問題的解決方案
-declare module "exceljs" {
-	export interface Workbook {
-		addImage(img: {
-			filename?: string;
-			base64?: string;
-			extension: "jpeg" | "png" | "gif";
-		}): number;
-	}
-}
-
 interface WriteOptions {
 	worksheetName?: string;
 	overwrite?: boolean;
@@ -137,7 +126,7 @@ export default class WriteExcelFile {
 	}
 
 	/**
-	 * 解析儲存格地址
+	 * 解析儲存格地址 (如: 'A1' -> {col: 1, row: 1})
 	 */
 	private parseCellAddress(cell: string): { col: number; row: number } {
 		const match = cell.match(/^([A-Z]+)(\d+)$/);
@@ -173,6 +162,7 @@ export default class WriteExcelFile {
 				return false;
 			}
 
+			// 檢查檔案大小限制 (10MB)
 			if (stats.size > 10 * 1024 * 1024) {
 				console.warn(`圖片檔案過大: ${imagePath} (${stats.size} bytes)`);
 				return false;
@@ -192,7 +182,7 @@ export default class WriteExcelFile {
 	}
 
 	/**
-	 * 創建備份
+	 * 創建可靠的備份
 	 */
 	private createBackup(filePath: string): string | null {
 		try {
@@ -204,101 +194,6 @@ export default class WriteExcelFile {
 		} catch (error) {
 			console.error(`建立備份失敗: ${error}`);
 			return null;
-		}
-	}
-
-	/**
-	 * 插入單張圖片 - 完全避開 Buffer 問題
-	 */
-	private async insertSingleImage(
-		workbook: ExcelJS.Workbook,
-		worksheet: ExcelJS.Worksheet,
-		imageOption: ImageOptions
-	): Promise<boolean> {
-		try {
-			const {
-				imagePath,
-				cell,
-				width = 50,
-				height = 50,
-				maintainAspectRatio = true,
-			} = imageOption;
-
-			// 解析儲存格位置
-			const cellInfo = this.parseCellAddress(cell);
-			const ext = path.extname(imagePath).toLowerCase().replace(".", "");
-
-			// 標準化副檔名
-			let standardExt: "jpeg" | "png" | "gif";
-			switch (ext) {
-				case "jpg":
-				case "jpeg":
-					standardExt = "jpeg";
-					break;
-				case "png":
-					standardExt = "png";
-					break;
-				case "gif":
-					standardExt = "gif";
-					break;
-				default:
-					throw new Error(`不支援的圖片格式: ${ext}`);
-			}
-
-			let imageId: number;
-			let insertMethod = "";
-
-			// 方法一：使用 filename（最穩定）
-			try {
-				const absolutePath = path.resolve(imagePath);
-				imageId = workbook.addImage({
-					filename: absolutePath,
-					extension: standardExt,
-				});
-				insertMethod = "filename";
-			} catch (filenameError) {
-				console.warn(`filename 方式失敗: ${filenameError}`);
-
-				// 方法二：使用 base64（完全避開 Buffer 問題）
-				try {
-					const base64Data = fs.readFileSync(imagePath, "base64");
-
-					imageId = workbook.addImage({
-						base64: base64Data,
-						extension: standardExt,
-					});
-					insertMethod = "base64";
-				} catch (base64Error) {
-					throw new Error(
-						`圖片插入失敗: filename(${filenameError}), base64(${base64Error})`
-					);
-				}
-			}
-
-			// 設置圖片位置和大小
-			const imageConfig = {
-				tl: {
-					col: cellInfo.col - 1,
-					row: cellInfo.row - 1,
-				},
-				ext: {
-					width: maintainAspectRatio ? width : width,
-					height: maintainAspectRatio ? width : height,
-				},
-			};
-
-			// 插入圖片到工作表
-			worksheet.addImage(imageId, imageConfig);
-
-			console.log(
-				`✅ 圖片插入成功 (${insertMethod}): ${path.basename(
-					imagePath
-				)} → ${cell}`
-			);
-			return true;
-		} catch (error) {
-			console.error(`插入圖片失敗: ${imageOption.imagePath} - ${error}`);
-			return false;
 		}
 	}
 
@@ -355,7 +250,7 @@ export default class WriteExcelFile {
 
 			// 5. 批次插入圖片
 			let insertedCount = 0;
-			const batchSize = 5;
+			const batchSize = 5; // 每批處理5張圖片
 
 			for (let i = 0; i < validImages.length; i += batchSize) {
 				const batch = validImages.slice(
@@ -432,6 +327,76 @@ export default class WriteExcelFile {
 	}
 
 	/**
+	 * 插入單張圖片
+	 */
+	private async insertSingleImage(
+		workbook: ExcelJS.Workbook,
+		worksheet: ExcelJS.Worksheet,
+		imageOption: ImageOptions
+	): Promise<boolean> {
+		try {
+			const {
+				imagePath,
+				cell,
+				width = 50, // 較小的預設尺寸
+				height = 50,
+				maintainAspectRatio = true,
+			} = imageOption;
+
+			// 解析儲存格位置
+			const cellInfo = this.parseCellAddress(cell);
+
+			// 讀取圖片檔案
+			const imageBuffer:Buffer = fs.readFileSync(imagePath);
+			const ext = path.extname(imagePath).toLowerCase().replace(".", "");
+
+			// 標準化副檔名
+			let standardExt: "jpeg" | "png" | "gif";
+			switch (ext) {
+				case "jpg":
+				case "jpeg":
+					standardExt = "jpeg";
+					break;
+				case "png":
+					standardExt = "png";
+					break;
+				case "gif":
+					standardExt = "gif";
+					break;
+				default:
+					throw new Error(`不支援的圖片格式: ${ext}`);
+			}
+
+			// 加入圖片到工作簿
+			const imageId = workbook.addImage({
+				buffer: imageBuffer,
+				extension: standardExt,
+			});
+
+			// 設置圖片位置和大小
+			const imageConfig = {
+				tl: {
+					col: cellInfo.col - 1,
+					row: cellInfo.row - 1,
+				},
+				ext: {
+					width: maintainAspectRatio ? width : width,
+					height: maintainAspectRatio ? width : height, // 保持比例時使用相同值
+				},
+			};
+
+			// 插入圖片
+			worksheet.addImage(imageId, imageConfig);
+
+			console.log(`✅ 圖片插入成功: ${path.basename(imagePath)} → ${cell}`);
+			return true;
+		} catch (error) {
+			console.error(`插入圖片失敗: ${imageOption.imagePath} - ${error}`);
+			return false;
+		}
+	}
+
+	/**
 	 * 驗證 Excel 檔案完整性
 	 */
 	async validateExcelFile(filePath: string): Promise<boolean> {
@@ -457,6 +422,7 @@ export default class WriteExcelFile {
 		images: ImageOptions[],
 		worksheetName?: string
 	): Promise<WriteResult> {
+		// 直接調用安全版本
 		return this.insertImagesSafely(excelPath, images, worksheetName);
 	}
 }
