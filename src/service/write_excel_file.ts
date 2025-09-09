@@ -31,6 +31,24 @@ interface WriteResult {
 }
 
 export default class WriteExcelFile {
+	async clearFolder(folderPath: string) {
+		try {
+			if (fs.existsSync(folderPath)) {
+				const files = fs.readdirSync(folderPath);
+				files.forEach((file) => {
+					const filePath = path.join(folderPath, file);
+					if (fs.statSync(filePath).isFile()) {
+						fs.unlinkSync(filePath);
+						console.log(`🗑️ 已刪除檔案：${filePath}`);
+					}
+				});
+			}
+		} catch (error) {
+			console.error("刪除檔案存在時發生錯誤：", error);
+			return false;
+		}
+	}
+
 	checkFileExists(filePath: string): boolean {
 		try {
 			return fs.existsSync(filePath);
@@ -182,22 +200,6 @@ export default class WriteExcelFile {
 	}
 
 	/**
-	 * 創建可靠的備份
-	 */
-	private createBackup(filePath: string): string | null {
-		try {
-			const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-			const backupPath = filePath.replace(".xlsx", `_backup_${timestamp}.xlsx`);
-			fs.copyFileSync(filePath, backupPath);
-			console.log(`💾 已建立備份: ${path.basename(backupPath)}`);
-			return backupPath;
-		} catch (error) {
-			console.error(`建立備份失敗: ${error}`);
-			return null;
-		}
-	}
-
-	/**
 	 * 安全地插入圖片到 Excel 檔案
 	 */
 	async insertImagesSafely(
@@ -214,10 +216,7 @@ export default class WriteExcelFile {
 				throw new Error(`Excel 檔案不存在: ${excelPath}`);
 			}
 
-			// 1. 建立備份
-			backupPath = this.createBackup(excelPath);
-
-			// 2. 過濾有效圖片
+			// 1. 過濾有效圖片
 			const validImages = images.filter((img) =>
 				this.isValidImageFile(img.imagePath)
 			);
@@ -233,11 +232,11 @@ export default class WriteExcelFile {
 				};
 			}
 
-			// 3. 載入工作簿
+			// 2. 載入工作簿
 			const workbook = new ExcelJS.Workbook();
 			await workbook.xlsx.readFile(excelPath);
 
-			// 4. 選擇工作表
+			// 3. 選擇工作表
 			const worksheet = worksheetName
 				? workbook.getWorksheet(worksheetName)
 				: workbook.getWorksheet(1);
@@ -248,7 +247,7 @@ export default class WriteExcelFile {
 
 			console.log(`📋 使用工作表: ${worksheet.name}`);
 
-			// 5. 批次插入圖片
+			// 4. 批次插入圖片
 			let insertedCount = 0;
 			const batchSize = 5; // 每批處理5張圖片
 
@@ -287,7 +286,7 @@ export default class WriteExcelFile {
 				}
 			}
 
-			// 6. 儲存檔案
+			// 5. 儲存檔案
 			console.log(`💾 正在儲存修改後的檔案...`);
 			await workbook.xlsx.writeFile(excelPath);
 
@@ -347,7 +346,7 @@ export default class WriteExcelFile {
 			const cellInfo = this.parseCellAddress(cell);
 
 			// 讀取圖片檔案
-			const imageBuffer:Buffer = fs.readFileSync(imagePath);
+			const imageBase64 = fs.readFileSync(imagePath, { encoding: "base64" });
 			const ext = path.extname(imagePath).toLowerCase().replace(".", "");
 
 			// 標準化副檔名
@@ -369,7 +368,7 @@ export default class WriteExcelFile {
 
 			// 加入圖片到工作簿
 			const imageId = workbook.addImage({
-				buffer: imageBuffer,
+				base64: imageBase64,
 				extension: standardExt,
 			});
 

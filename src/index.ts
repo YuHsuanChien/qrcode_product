@@ -68,6 +68,14 @@ async function index() {
 			throw new Error("沒有找到有效的員工資料");
 		}
 
+		const qrcodeFolder = path.resolve(__dirname, "../qrcode");
+		console.log(`📁 QR Code 資料夾：${qrcodeFolder}`);
+		// 把 QR Code 資料夾內的圖片都刪除
+		const cleared = await writeExcelService.clearFolder(qrcodeFolder);
+		if (cleared) {
+			console.log("🧹 已清空 QR Code 資料夾");
+		}
+
 		// 3. 序列產生 QR Code（避免併發問題）
 		console.log("🔄 開始序列產生 QR Code...");
 
@@ -96,8 +104,6 @@ async function index() {
 		);
 
 		// 4. 檢查 QR Code 資料夾和圖片
-		const qrcodeFolder = path.resolve(__dirname, "../qrcode");
-		console.log(`📁 QR Code 資料夾：${qrcodeFolder}`);
 
 		if (!writeExcelService.checkFileExists(qrcodeFolder)) {
 			throw new Error(`QR Code 資料夾不存在：${qrcodeFolder}`);
