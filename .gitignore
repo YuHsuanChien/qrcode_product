@@ -1,3 +1,5 @@
 node_modules
 qrcode
 dist
+member_qrcode
+family_qrcode

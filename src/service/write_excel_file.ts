@@ -412,16 +412,4 @@ export default class WriteExcelFile {
 			return false;
 		}
 	}
-
-	/**
-	 * 舊版插入方法 (保持向下相容)
-	 */
-	async insertImages(
-		excelPath: string,
-		images: ImageOptions[],
-		worksheetName?: string
-	): Promise<WriteResult> {
-		// 直接調用安全版本
-		return this.insertImagesSafely(excelPath, images, worksheetName);
-	}
 }
