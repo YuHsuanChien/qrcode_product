@@ -1,0 +1,43 @@
+{
+	"compilerOptions": {
+		// 編譯目標 - 使用較新的 ES 版本以獲得更好的性能和功能
+		"target": "ES2020",
+
+		// 模組系統
+		"module": "commonjs",
+
+		// 輸出和源碼目錄
+		"outDir": "./dist", // 編譯後的文件輸出到 dist 目錄
+		"rootDir": "./src", // 源碼放在 src 目錄
+
+		// 嚴格模式檢查（強烈建議）
+		"strict": true, // 啟用所有嚴格類型檢查
+
+		// 模組解析
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"moduleResolution": "node",
+
+		// 其他實用選項
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+
+		// 生成 source map 方便調試
+		"sourceMap": true,
+
+		// 移除註釋以減小輸出文件大小
+		"removeComments": true,
+
+		// 解析 JSON 文件
+		"resolveJsonModule": true,
+
+		// 允許使用裝飾器（如果需要）
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"types": ["node"]
+	},
+
+	// 包含和排除的文件
+	"include": ["src/**/*"],
+	"exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+}
