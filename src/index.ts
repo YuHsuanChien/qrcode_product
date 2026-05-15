@@ -85,11 +85,8 @@ async function index() {
 		for (let i = 0; i < staffList.length; i++) {
 			const staff = staffList[i];
 			try {
-				await qrcodeService.generateQRCode(staff.id);
+				await qrcodeService.generateQRCode(staff.id, "member");
 				qrSuccessCount++;
-				console.log(
-					`✅ QR Code 已產生: ${staff.id} (${qrSuccessCount}/${staffList.length})`
-				);
 			} catch (qrError) {
 				console.error(`❌ QR Code 產生失敗: ${staff.id} - ${qrError}`);
 			}
@@ -262,11 +259,8 @@ async function index() {
 		for (let i = 0; i < familyList.length; i++) {
 			const staff = familyList[i];
 			try {
-				await qrcodeService.generateQRCode(staff.id);
+				await qrcodeService.generateQRCode(staff.id, "family");
 				family_qrSuccessCount++;
-				console.log(
-					`✅ QR Code 已產生: ${staff.id} (${family_qrSuccessCount}/${familyList.length})`
-				);
 			} catch (qrError) {
 				console.error(`❌ QR Code 產生失敗: ${staff.id} - ${qrError}`);
 			}
@@ -284,8 +278,8 @@ async function index() {
 
 		// 4. 檢查 QR Code 資料夾和圖片
 
-		if (!writeExcelService.checkFileExists(member_qrcode_folder)) {
-			throw new Error(`QR Code 資料夾不存在：${member_qrcode_folder}`);
+		if (!writeExcelService.checkFileExists(family_qrcode_folder)) {
+			throw new Error(`QR Code 資料夾不存在：${family_qrcode_folder}`);
 		}
 
 		// 5. 準備圖片插入配置（直接基於原始資料，不需要 newData）

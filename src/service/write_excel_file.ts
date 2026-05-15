@@ -39,7 +39,6 @@ export default class WriteExcelFile {
 					const filePath = path.join(folderPath, file);
 					if (fs.statSync(filePath).isFile()) {
 						fs.unlinkSync(filePath);
-						console.log(`🗑️ 已刪除檔案：${filePath}`);
 					}
 				});
 			}
@@ -80,7 +79,6 @@ export default class WriteExcelFile {
 				);
 			}
 
-			console.log(`📝 正在寫入：${filePath}`);
 
 			const workbook = new ExcelJS.Workbook();
 			const worksheet = workbook.addWorksheet(worksheetName);
@@ -257,12 +255,6 @@ export default class WriteExcelFile {
 					Math.min(i + batchSize, validImages.length)
 				);
 
-				console.log(
-					`🔄 處理批次 ${Math.floor(i / batchSize) + 1}/${Math.ceil(
-						validImages.length / batchSize
-					)}`
-				);
-
 				for (const imageOption of batch) {
 					try {
 						const success = await this.insertSingleImage(
@@ -386,8 +378,6 @@ export default class WriteExcelFile {
 
 			// 插入圖片
 			worksheet.addImage(imageId, imageConfig);
-
-			console.log(`✅ 圖片插入成功: ${path.basename(imagePath)} → ${cell}`);
 			return true;
 		} catch (error) {
 			console.error(`插入圖片失敗: ${imageOption.imagePath} - ${error}`);
